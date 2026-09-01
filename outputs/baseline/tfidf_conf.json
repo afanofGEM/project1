@@ -1,0 +1,7 @@
+{
+  "analyzer": "char",
+  "ngram_range": [
+    1,
+    2
+  ]
+}

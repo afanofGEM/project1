@@ -1,0 +1,8 @@
+{
+  "lr": 3e-05,
+  "weight_decay": 0.0,
+  "warmup_ratio": 0.1,
+  "best_choice_name": "D",
+  "model_name": "google-bert/bert-base-chinese",
+  "num_labels": 31
+}

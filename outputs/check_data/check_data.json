@@ -1,0 +1,16 @@
+{
+  "total_samples": 3736,
+  "missing_columns": [],
+  "empty_text_count": 0,
+  "empty_label_count": 0,
+  "duplicate_ticket_id_count": 0,
+  "duplicate_text_row_count": 0,
+  "conflicting_label_row_count": 0,
+  "unknown_labels": [],
+  "text_length_result": {
+    "min": 2,
+    "max": 65,
+    "mean": 8.37,
+    "median": 8.0
+  }
+}

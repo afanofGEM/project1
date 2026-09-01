@@ -1,0 +1,25 @@
+# Docker有现成的python精简版环境，直接导入
+FROM python:3.10.19-slim 
+
+# 规定后续的操作放在Docker image的哪里
+WORKDIR /app
+
+# 从原项目的根目录出发，把原项目的依赖复制到容器的/app目录
+COPY requirements.txt .
+
+# RUN：把执行结果保存到镜像中
+# -r requirements.txt：读取并安装全部依赖
+# --no-cache-dir：不保存下载缓存
+RUN pip install --no-cache-dir -r requirements.txt
+
+# 前一个点表示当前项目目录project1/
+# 后一个点表示镜像当前目录/app
+# 复制当前目录中的内容到镜像目录
+COPY . .
+# project1/....就会变成app/.....
+
+# 当Container启动时，默认执行这个命令
+# uvicorn:浏览器请求->uvicorn服务器->fastapi对象app
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+# 接收所有主机的请求，然后设置将来创建的container应用的端口为8000

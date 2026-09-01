@@ -1,0 +1,7 @@
+{
+  "c-value": 10,
+  "class_weight": "balanced",
+  "max_iter": 1000,
+  "solver": "lbfgs",
+  "random_state": 15
+}
