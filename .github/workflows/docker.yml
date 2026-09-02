@@ -1,0 +1,36 @@
+# 告诉github actions你的任务是当project1的代码更新时
+# 自动构建根据Dockerfile 构建Docker image 并且上传至ACR镜像管理仓库
+name: Build and Push Docker Image
+
+on:
+  push:
+    branches:
+      - main
+# 只要main分支的代码更新，就会github actions就会执行workflow
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest # github临时开一台Ubuntu机子干活
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6 # 先把代码复制到Ubuntu机子里面
+
+      - name: Login to Alibaba Cloud ACR
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ secrets.ACR_REGISTRY }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}  # Actions先登录阿里云ACR，不需要namespace
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v7 # 构造镜像
+        with:
+          context: .  # 用project1中的Dockerfile构造image
+          push: true # 上传至ACR
+
+          # 给这次构造的镜像起两个名字,registry ACR仓库地址 / ACR仓库命名空间 / ACR仓库(一个镜像集合)/ id
+          tags: |
+            ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/project1:latest
+            ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/project1:${{ github.sha }}
+    # github.sha:这次Git提交的唯一ID
