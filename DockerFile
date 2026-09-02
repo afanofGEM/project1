@@ -7,7 +7,7 @@ WORKDIR /app
 # 从原项目的根目录出发，把原项目的依赖复制到容器的/app目录
 COPY requirements.txt .
 
-# RUN：把执行结果保存到镜像中
+# RUN：把执行结果保存到镜像中.
 # -r requirements.txt：读取并安装全部依赖
 # --no-cache-dir：不保存下载缓存
 RUN pip install --no-cache-dir -r requirements.txt
