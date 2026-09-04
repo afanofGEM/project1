@@ -1,36 +1,74 @@
-# 告诉github actions你的任务是当project1的代码更新时
-# 自动构建根据Dockerfile 构建Docker image 并且上传至ACR镜像管理仓库
-name: Build and Push Docker Image
+name: Build Push and Deploy
 
 on:
   push:
     branches:
-      - main
-# 只要main分支的代码更新，就会github actions就会执行workflow
+      - main  # main分支代码一旦更新Github就执行Actions
 
 jobs:
+  # CI：负责确认这份新代码正常交付，把镜像上传至ACR，新版本自动更新(至镜像)
   build-and-push:
-    runs-on: ubuntu-latest # github临时开一台Ubuntu机子干活
+    runs-on: ubuntu-latest #Github创建一台临时虚拟机干活
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6 # 先把代码复制到Ubuntu机子里面
+        uses: actions/checkout@v6 #把代码复制到虚拟机上
 
       - name: Login to Alibaba Cloud ACR
         uses: docker/login-action@v4
         with:
           registry: ${{ secrets.ACR_REGISTRY }}
           username: ${{ secrets.ACR_USERNAME }}
-          password: ${{ secrets.ACR_PASSWORD }}  # Actions先登录阿里云ACR，不需要namespace
+          password: ${{ secrets.ACR_PASSWORD }} # 登录ACR镜像管理仓库
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@v7 # 构造镜像
+        uses: docker/build-push-action@v7
         with:
-          context: .  # 用project1中的Dockerfile构造image
-          push: true # 上传至ACR
-
-          # 给这次构造的镜像起两个名字,registry ACR仓库地址 / ACR仓库命名空间 / ACR仓库(一个镜像集合)/ id
+          context: .
+          push: true
           tags: |
             ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/project1:latest
             ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/project1:${{ github.sha }}
-    # github.sha:这次Git提交的唯一ID
+        # 根据代码中的Dockerfile构建镜像，给镜像起两个名字，并且发布到ACR中
+  
+  # CD:让新版本自动上线
+  deploy:
+    needs: build-and-push # 在发布镜像之后，使用ubuntu虚拟机去仓库
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.ECS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "${{ secrets.ECS_HOST }}" >> ~/.ssh/known_hosts
+      
+      # 使用ubuntu虚拟机登录ECS服务器
+      # 在ECS上删除旧的container
+      # 构建新的container，并创建network方便container之间互相访问
+      - name: Deploy to ECS
+        run: |
+          ssh ${{ secrets.ECS_USER }}@${{ secrets.ECS_HOST }} << 'EOF'
+            docker pull ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/project1:latest
+
+            docker rm -f project1 || true
+
+            docker run -d \
+              --name project1 \
+              --network project1-net \
+              --restart unless-stopped \
+              -p 8000:8000 \
+              --env-file /root/project1.env \
+              ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/project1:latest
+          EOF
+
+# 注意MySQL的Container不需要更新
+# docker run -d \
+#   --name project1-mysql \
+#   --network project1-net \
+#   --restart unless-stopped \
+#   -e MYSQL_ROOT_PASSWORD='你的MySQL密码' \
+#   -e MYSQL_DATABASE=ticket_classification \
+#   -v project1-mysql-data:/var/lib/mysql \
+#   mysql:8.0
